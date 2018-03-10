@@ -1,0 +1,30 @@
+#place this is in /lib/systemd/system/blockchain.service
+[Unit]
+Description=blockchain service
+ConditionPathExists=/var/www/go/blockchain/
+After=network.target
+ 
+[Service]
+Type=simple
+User=blockchainservice
+Group=blockchainservice
+LimitNOFILE=1024
+
+Restart=on-failure
+RestartSec=10
+startLimitIntervalSec=60
+
+WorkingDirectory=/var/www/go/blockchain
+ExecStart=/var/www/go/blockchain/blockchain
+
+# make sure log directory exists and owned by syslog
+PermissionsStartOnly=true
+ExecStartPre=/bin/mkdir -p /var/log/blockchainservice
+ExecStartPre=/bin/chown syslog:adm /var/log/blockchainservice
+ExecStartPre=/bin/chmod 755 /var/log/blockchainservice
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=blockchainservice
+ 
+[Install]
+WantedBy=multi-user.target
