@@ -53,6 +53,7 @@ func (self *BlockChain) NewTransaction(sender string, recipient string, amount f
 func (self BlockChain) PrintInfo() {
 	fmt.Printf("Pending Transactions  - %d  \n", len(self.CurrentTransactions))
 	fmt.Printf("Length of Blockchain %d \n", len(self.Chain))
+	fmt.Printf("Blockchain data %v", (self.Chain))
 }
 
 // Simple Proof of Work Algorithm:

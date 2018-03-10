@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script src="vue.min.js"></script>
+	<script src="vue-resource.js"></script>
+	<!-- <script src="https://cdn.jsdelivr.net/npm/vue"></script> -->
+	<link rel="stylesheet" type="text/css" href="styles.css">
+	
+</style>
+<title>I am a test page</title>
+<script type="text/javascript">
+	window.onload = function(e){
+		var app = new Vue({
+			el: '#app',
+			data: {
+				message: 'Blockchain Test Page',
+				thechain:[],
+				from:"123",
+				to:"234",
+				amount:1.0,
+				transactions:[]
+			},
+			methods:{
+				add: function () {
+					this.$http.post('/api/add',{Sender: this.from,Recipient:this.to,Amount:Number(this.amount)}).then(response => {
+						this.transactions = response.body;
+					}, response => {
+						console.log('error');
+					});
+				},
+				getTransactions:function(){
+					this.$http.get('/api/transactions').then(response => {
+						this.transactions = response.body;
+					}, response => {
+						console.log('error');
+					});
+				},				
+				mine:function(){
+					this.$http.get('/api/mine').then(response => {
+						this.thechain = response.body;
+						this.transactions=[];
+					}, response => {
+						console.log('error');
+					});
+				}
+			},
+			created: function () {
+				this.$http.get('/api/chain').then(response => {
+					this.thechain = response.body;
+				}, response => {
+					console.log('error');
+				});
+				this.getTransactions();
+			}
+		})
+	}
+</script>
+</head>
+<body>
+	<div id="app">
+		<h1>{{message}}</h1>
+		<div class="container">
+			<div id="s1" class="section">
+				<h2>Add a Transaction</h2>
+				<form>
+					<label>From: </label>
+					<input type="text" v-model="from"><br>
+					<label>To:</label>
+					<input type="text" v-model="to">		<br>
+					<label>Amount:</label>
+					<input type="number" v-model="amount">
+					<button type="button" v-on:click="add()">Add Transaction</button>
+				</form>
+			</div>
+			<div id="s2" class="section">
+				<h2>Mine a Coin?</h2>
+				<button type="button" v-on:click="mine()" style="font-size: 40px;">MINE </button>
+			</div>
+			<div id="s3" class="section">
+				<h2>Pending Transactions</h2>
+				<pre>{{transactions}}</pre>
+			</div>
+		</div>
+		<h2>The Chain</h2>
+		<div class="container">
+			<div>
+				<pre>{{thechain}}</pre>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
