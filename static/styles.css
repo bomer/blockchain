@@ -7,14 +7,14 @@ body {
 	width: 33.33%;
 	background-color: #eee;
 	min-height: 300px;
+	padding:20px;
 }
-@media only screen and (max-width:600px) {
+@media only screen and (max-width:800px) {
 	.container {
 		display: block !important;
 	}
-
 	.section {
-		width: 100%;
+		width: 88%;
 	}
 
 }
@@ -38,4 +38,11 @@ body {
 label {
 	display: inline-block;
 	width: 90px;
+}
+p{
+	overflow-wrap: break-word;
+}
+button{
+	background-color: white;
+	border:0;
 }

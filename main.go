@@ -1,7 +1,12 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/asn1"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"github.com/bomer/blockchain/blockchain"
 	"net/http"
@@ -27,7 +32,7 @@ func addhandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	MyBlockChain.NewTransaction(data.Recipient, data.Recipient, data.Amount)
+	MyBlockChain.NewTransaction(data.Sender, data.Recipient, data.Amount)
 	json.NewEncoder(w).Encode(MyBlockChain.CurrentTransactions)
 
 }
@@ -42,6 +47,43 @@ func transactionshandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(MyBlockChain.CurrentTransactions)
 }
 
+func generatekeyhandler(w http.ResponseWriter, r *http.Request) {
+
+	reader := rand.Reader
+	bitSize := 2048
+
+	key, err := rsa.GenerateKey(reader, bitSize)
+	checkError(err)
+
+	publicKey := key.PublicKey
+	// json.NewEncoder(w).Encode(publicKey)
+	var privateKey = &pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	}
+
+	fmt.Fprintf(w, "{\"private\":\"")
+	_ = pem.Encode(w, privateKey)
+	fmt.Fprintf(w, "\",\"public\":\"")
+	//now pub;ic key
+	asn1Bytes, err := asn1.Marshal(publicKey)
+
+	var pemkey = &pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: asn1Bytes,
+	}
+
+	checkError(err)
+	_ = pem.Encode(w, pemkey)
+	fmt.Fprintf(w, "\"}")
+
+}
+
+func checkError(err error) {
+	if err != nil {
+		fmt.Println("Fatal error ", err.Error())
+	}
+}
 func main() {
 	//SETUP the genisys
 	MyBlockChain.NewBlock(100, "1") // Genysis Block
@@ -53,6 +95,7 @@ func main() {
 	http.HandleFunc("/api/mine", minehandler)
 	http.HandleFunc("/api/chain", chainhandler)
 	http.HandleFunc("/api/transactions", transactionshandler)
+	http.HandleFunc("/api/generatekeys", generatekeyhandler)
 
 	http.ListenAndServe(":8008", nil)
 }

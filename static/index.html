@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<script src="vue.min.js"></script>
 	<script src="vue-resource.js"></script>
+	<script src="cryptico.min.js"></script>
+	<script src="cryptico.addons.js"></script>
 	<!-- <script src="https://cdn.jsdelivr.net/npm/vue"></script> -->
 	<link rel="stylesheet" type="text/css" href="styles.css">
 	
@@ -10,15 +13,20 @@
 <title>I am a test page</title>
 <script type="text/javascript">
 	window.onload = function(e){
+		
 		var app = new Vue({
 			el: '#app',
 			data: {
 				message: 'Blockchain Test Page',
 				thechain:[],
-				from:"123",
+				from:"555",
 				to:"234",
 				amount:1.0,
-				transactions:[]
+				transactions:[],
+				publickey:"",
+				privatekey:"",
+				publicid:"",
+				hash:""
 			},
 			methods:{
 				add: function () {
@@ -42,9 +50,49 @@
 					}, response => {
 						console.log('error');
 					});
+				},
+				createKey:function(){
+					var PassPhrase = "The Moon is a Harsh Mistress." + Math.random();
+					var Bits = 512;
+
+					console.log("Matt's passphrase: " + PassPhrase);
+					console.log("Bit length: " + Bits);
+
+
+					this.privatekey = cryptico.generateRSAKey(PassPhrase, Bits);
+					this.publickey = cryptico.publicKeyString(this.privatekey);       
+
+					localStorage.setItem('key', (this.privatekey.toJSON()));
+					console.log(localStorage);
+					console.log("Matt's public key string:");
+					console.log(this.publickey);
+
+					var PlainText = "Matt, I need you to help me with my Starcraft strategy.";
+
+					console.log("Sam's message: " + PlainText);
+
+					var EncryptionResult = cryptico.encrypt(PlainText, this.privatekey);
+					console.log(this.privatekey);
+
+					this.publicid = (cryptico.publicKeyID(this.publickey));
+				},
+				loadKey:function(){
+					var key = localStorage.getItem('key');
+					if(key){
+						console.log(key);
+						this.privatekey=fromJSON(key);
+						console.log(this.privatekey);
+						this.publickey = cryptico.publicKeyString(this.privatekey);  
+						this.publicid = (cryptico.publicKeyID(this.publickey));
+     
+
+					}
 				}
+
 			},
 			created: function () {
+				//loadkey
+				this.loadKey();
 				this.$http.get('/api/chain').then(response => {
 					this.thechain = response.body;
 				}, response => {
@@ -74,6 +122,13 @@
 			</div>
 			<div id="s2" class="section">
 				<h2>Mine a Coin?</h2>
+				<!-- <p>private key {{privatekey}}</p> -->
+				<p>Public key <a href='' onclick="localStorage.clear()">x</a> {{publickey}}</p>
+				<p>Public ID {{publicid}}</p>
+
+				<div v-if="this.privatekey==''">
+				<button type="button" v-on:click="createKey()" style="font-size: 40px;">createKey </button><br><br>
+				</div>
 				<button type="button" v-on:click="mine()" style="font-size: 40px;">MINE </button>
 			</div>
 			<div id="s3" class="section">
