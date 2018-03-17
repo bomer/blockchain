@@ -3,9 +3,10 @@
 <head>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<script src="vue.min.js"></script>
+	<script src="sha256.min.js"></script>
 	<script src="vue-resource.js"></script>
-	<script src="cryptico.min.js"></script>
-	<script src="cryptico.addons.js"></script>
+	<!-- <script src="cryptico.min.js"></script> -->
+	<!-- <script src="cryptico.addons.js"></script> -->
 	<!-- <script src="https://cdn.jsdelivr.net/npm/vue"></script> -->
 	<link rel="stylesheet" type="text/css" href="styles.css">
 	
@@ -14,6 +15,17 @@
 <script type="text/javascript">
 	window.onload = function(e){
 		
+		var algo="RSASSA-PKCS1-v1_5";
+		var sig;		
+		var algorithminfo = {
+			name: "RSASSA-PKCS1-v1_5",
+			modulusLength: 2048, 
+			publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+			hash: {name: "SHA-256"},
+		};
+
+		
+
 		var app = new Vue({
 			el: '#app',
 			data: {
@@ -30,31 +42,62 @@
 			},
 			methods:{
 				add: function () {
-					var msg = {Sender: this.from, Recipient:this.to, Amount:Number(this.amount)};
-					msgenc = this.encrypt(msg);
-					var send= {Transaction:msg,Data: msgenc,Key:this.privatekey,PublicKey:this.publickey};
-					console.log(send);
+					// sign(key)
+					var msg = {Sender: this.from, Recipient:this.to, Amount:Number(this.amount)};					
+					var sign = this.sign(this.privatekey,msg)
+					console.log(sign);
+					
+				},
+				sign:function(key,msg){
+					var msgenc = this.encodemsg(msg);
+					console.log(msgenc);
+					var that=this;
 
-					this.$http.post('/api/add',send).then(response => {
-						this.transactions = response.body;
-					}, response => {
-						console.log('error');
+					crypto.subtle.sign({name: algo}, key, msgenc)
+					.then(function(signature){ 		
+						console.log("new Uint8Array(signature)");
+						var sig=(new Uint8Array(signature));
+						console.log("signature");
+						console.log(signature);
+
+						console.log("that.publickey");
+						console.log(that.publickey);
+
+						var send = JSON.stringify({Transaction:msg,Signature: sig,Key:JSON.parse(localStorage.getItem('public'))});
+
+						console.log(send);
+						console.log(that.verify(signature,msgenc));
+
+						that.$http.post('/api/add',send).then(response => {
+							that.transactions = response.body;
+						}, response => {
+							console.log('error');
+						});
+
+						/* verify(public_key_object,signature,encodedmsg);*/
+					})
+					.catch(function(err){
+						console.error(err);
 					});
 				},
-				encrypt:function(msg){
-					console.log("encrypt....");
-					console.log(msg);
-					msg=JSON.stringify(msg);
-					// var EncryptionResult = cryptico.encrypt(msg, this.privatekey);
-					var EncryptionResult = cryptico.encrypt(msg, this.publickey, this.privatekey)
-
-					console.log(EncryptionResult);
-					console.log(cryptico.decrypt(EncryptionResult.cipher,this.privatekey));
-					return EncryptionResult.cipher;
-
-
+				verify:function(sig,data){ 
+					var type={name: "RSASSA-PKCS1-v1_5"};
+					window.crypto.subtle.verify(type,this.publickey, sig, data)
+					.then(function(isvalid){
+						console.log(isvalid);
+					})
+					.catch(function(err){
+						console.error(err);
+					});
 
 				},
+				encodemsg:function(msg){
+					var enc = new TextEncoder("utf-8");
+					var encodedmsg = enc.encode(msg);
+					console.log("encodedmsg");
+					console.log(encodedmsg);
+					return encodedmsg;
+				},			
 				getTransactions:function(){
 					this.$http.get('/api/transactions').then(response => {
 						this.transactions = response.body;
@@ -70,44 +113,61 @@
 						console.log('error');
 					});
 				},
+				importkey:function(privkeydat,pubkeydata){
+					var that=this;					
+					window.crypto.subtle.importKey("jwk",privkeydata,algorithminfo,true, ["sign"])
+					.then(function(publicKey){    
+						console.log(publicKey);
+						that.privatekey=publicKey;
+					})
+
+					window.crypto.subtle.importKey("jwk",pubkeydata,algorithminfo,true, ["verify"])
+					.then(function(publicKey){    
+						console.log(publicKey);
+						that.publickey=publicKey;
+						that.publicid=sha256(JSON.stringify(publicKey));
+						console.log(that.publicid);
+					})
+				},
+				exportkey:function(key){
+					window.crypto.subtle.exportKey("jwk", key.privateKey)
+					.then(function(keydata){
+						localStorage.setItem('private', JSON.stringify(keydata));
+					})
+					window.crypto.subtle.exportKey("jwk", key.publicKey)
+					.then(function(keydata){
+						localStorage.setItem('public', JSON.stringify(keydata));
+					})
+				},
 				createKey:function(){
-					var PassPhrase = "The Moon is a Harsh Mistress." + Math.random();
-					var Bits = 512;
-
-					console.log("Matt's passphrase: " + PassPhrase);
-					console.log("Bit length: " + Bits);
-
-
-					this.privatekey = cryptico.generateRSAKey(PassPhrase, Bits);
-					this.publickey = cryptico.publicKeyString(this.privatekey);       
-
-					localStorage.setItem('key', (this.privatekey.toJSON()));
-					console.log(localStorage);
-					console.log("Matt's public key string:");
-					console.log(this.publickey);
-
-					var PlainText = "Matt, I need you to help me with my Starcraft strategy.";
-
-					console.log("Sam's message: " + PlainText);
-
-					var EncryptionResult = cryptico.encrypt(PlainText, this.privatekey);
-					console.log(EncryptionResult);
-					console.log(this.privatekey);
-
-					this.publicid = cryptico.publicKeyID(this.publickey);
-					this.from = this.publicid;
+					var crypto = window.crypto;
+					var that=this;
+					if(crypto.subtle)
+					{
+						console.log("Cryptography API Supported");
+						promise_key = crypto.subtle.generateKey(algorithminfo, true, ["sign","verify"]);
+						promise_key.then(function(key){
+							that.privatekey = key.privateKey;
+							that.publickey = key.publicKey;					
+							console.log(key.privateKey);
+							console.log(key.publicKey);
+							that.exportkey(key);
+							that.publicid=sha256(JSON.stringify(that.publickey));
+							
+						})
+					}
+					else{
+						alert("Crypto not supported!");
+					}
 				},
 				loadKey:function(){
-					var key = localStorage.getItem('key');
-					if(key){
-						console.log(key);
-						this.privatekey=fromJSON(key);
-						console.log(this.privatekey);
-						this.publickey = cryptico.publicKeyString(this.privatekey);  
-						this.publicid = (cryptico.publicKeyID(this.publickey));
-						this.from=this.publicid;
-
-
+					var privkey = localStorage.getItem('private');
+					var pubkey = localStorage.getItem('public');
+					if(privkey){
+						console.log("loaded key");
+						privkeydata=JSON.parse(privkey);
+						pubkeydata=JSON.parse(pubkey);
+						this.importkey(privkeydata,pubkeydata);
 					}
 				}
 
@@ -123,7 +183,7 @@
 				this.getTransactions();
 			}
 		})
-	}
+}
 </script>
 </head>
 <body>
