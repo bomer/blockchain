@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+
+</head>
+<body>
+	<script type="text/javascript">
+
+		var msg ="I am a message to be encrypted";
+		var algo="RSASSA-PKCS1-v1_5";
+		var sig;
+		var encodedmsg=encodeMsg();
+
+		function print(txt){
+			document.write(txt + "<br><br>");
+		}
+
+		function encodeMsg(){
+			var enc = new TextEncoder("utf-8");
+			var encodedmsg = enc.encode("This is a string converted to a Uint8Array");
+			console.log("encodedmsg");
+			console.log(encodedmsg);
+			return encodedmsg;
+		}
+	
+		function verify(pubkey,sig,data){ 
+			var type={name: "RSASSA-PKCS1-v1_5"};
+			window.crypto.subtle.verify(type,pubkey, sig, data)
+			.then(function(isvalid){
+				console.log(isvalid);
+			})
+			.catch(function(err){
+				console.error(err);
+			});
+
+		}
+
+		function exportkey(key){
+			window.crypto.subtle.exportKey("jwk", key)
+			.then(function(keydata){				
+				console.log(keydata);
+				localStorage.setItem('privatekey', JSON.stringify(keydata));
+			})
+			.catch(function(err){
+				console.error(err);
+			});
+		}
+
+		function createKey(){
+			var crypto = window.crypto;
+			if(crypto.subtle)
+			{
+				print("Cryptography API Supported");
+
+
+
+				promise_key = crypto.subtle.generateKey( 
+				{
+					name: "RSASSA-PKCS1-v1_5",
+					modulusLength: 2048, 
+					publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+					hash: {name: "SHA-256"},
+				}, true, ["sign", "verify"]);
+
+				promise_key.then(function(key){
+					private_key_object = key.privateKey;
+					public_key_object = key.publicKey;					
+					console.log(key.privateKey);
+					console.log(key.publicKey);
+					exportkey(key.privateKey);
+					sign(key)
+				})
+			}
+			else{
+				alert("Crypto not supported!");
+			}
+		}
+
+		function sign(key){
+			crypto.subtle.sign({name: algo}, key.privateKey, encodedmsg)
+			.then(function(signature){ 		
+				console.log("new Uint8Array(signature)");
+				console.log(new Uint8Array(signature));
+				console.log("signature");
+				console.log(signature);
+				verify(public_key_object,signature,encodedmsg);
+			})
+			.catch(function(err){
+				console.error(err);
+			});
+		}
+
+		window.onload = function(e){
+			createKey();
+		}
+	</script>
+</body>
+</html>
