@@ -5,10 +5,12 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/asn1"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"github.com/bomer/blockchain/blockchain"
+	"math/big"
 	"net/http"
 )
 
@@ -16,8 +18,16 @@ var (
 	MyBlockChain blockchain.BlockChain
 )
 
+type key struct {
+	alg string
+	E   string
+	ext bool
+	kty string
+	N   string
+}
 type addrequest struct {
-	Data        string
+	// Signature
+	Key         key
 	Transaction blockchain.Transaction
 }
 
@@ -36,6 +46,21 @@ func addhandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer r.Body.Close()
+
+	//Extract the E + N (exponent + Number) of the encoded public Key.
+	z := new(big.Int)
+	byteslice := []byte(data.Key.N)
+	z.SetBytes(byteslice)
+
+	e_data, _ := base64.RawURLEncoding.DecodeString(data.Key.E)
+
+	e_big := new(big.Int)
+	e_big.SetBytes(e_data)
+	e := int(e_big.Int64())
+
+	readPublicKey := rsa.PublicKey{N: z, E: e}
+
+	fmt.Printf("eeee %v eee", readPublicKey)
 
 	MyBlockChain.NewTransaction(data.Transaction.Sender, data.Transaction.Recipient, data.Transaction.Amount)
 	json.NewEncoder(w).Encode(MyBlockChain.CurrentTransactions)

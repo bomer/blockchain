@@ -126,6 +126,7 @@
 						console.log(publicKey);
 						that.publickey=publicKey;
 						that.publicid=sha256(JSON.stringify(publicKey));
+						that.from=that.publicid;
 						console.log(that.publicid);
 					})
 				},
@@ -153,6 +154,7 @@
 							console.log(key.publicKey);
 							that.exportkey(key);
 							that.publicid=sha256(JSON.stringify(that.publickey));
+							that.from=that.publicid;
 							
 						})
 					}
