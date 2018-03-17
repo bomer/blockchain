@@ -30,11 +30,30 @@
 			},
 			methods:{
 				add: function () {
-					this.$http.post('/api/add',{Sender: this.from,Recipient:this.to,Amount:Number(this.amount)}).then(response => {
+					var msg = {Sender: this.from, Recipient:this.to, Amount:Number(this.amount)};
+					msgenc = this.encrypt(msg);
+					var send= {Transaction:msg,Data: msgenc,Key:this.privatekey,PublicKey:this.publickey};
+					console.log(send);
+
+					this.$http.post('/api/add',send).then(response => {
 						this.transactions = response.body;
 					}, response => {
 						console.log('error');
 					});
+				},
+				encrypt:function(msg){
+					console.log("encrypt....");
+					console.log(msg);
+					msg=JSON.stringify(msg);
+					// var EncryptionResult = cryptico.encrypt(msg, this.privatekey);
+					var EncryptionResult = cryptico.encrypt(msg, this.publickey, this.privatekey)
+
+					console.log(EncryptionResult);
+					console.log(cryptico.decrypt(EncryptionResult.cipher,this.privatekey));
+					return EncryptionResult.cipher;
+
+
+
 				},
 				getTransactions:function(){
 					this.$http.get('/api/transactions').then(response => {
@@ -72,9 +91,11 @@
 					console.log("Sam's message: " + PlainText);
 
 					var EncryptionResult = cryptico.encrypt(PlainText, this.privatekey);
+					console.log(EncryptionResult);
 					console.log(this.privatekey);
 
-					this.publicid = (cryptico.publicKeyID(this.publickey));
+					this.publicid = cryptico.publicKeyID(this.publickey);
+					this.from = this.publicid;
 				},
 				loadKey:function(){
 					var key = localStorage.getItem('key');
@@ -84,7 +105,8 @@
 						console.log(this.privatekey);
 						this.publickey = cryptico.publicKeyString(this.privatekey);  
 						this.publicid = (cryptico.publicKeyID(this.publickey));
-     
+						this.from=this.publicid;
+
 
 					}
 				}
@@ -127,7 +149,7 @@
 				<p>Public ID {{publicid}}</p>
 
 				<div v-if="this.privatekey==''">
-				<button type="button" v-on:click="createKey()" style="font-size: 40px;">createKey </button><br><br>
+					<button type="button" v-on:click="createKey()" style="font-size: 40px;">createKey </button><br><br>
 				</div>
 				<button type="button" v-on:click="mine()" style="font-size: 40px;">MINE </button>
 			</div>

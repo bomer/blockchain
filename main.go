@@ -16,6 +16,11 @@ var (
 	MyBlockChain blockchain.BlockChain
 )
 
+type addrequest struct {
+	Data        string
+	Transaction blockchain.Transaction
+}
+
 func handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hi there. Seems you hit a dummy end point! Bumblebay tuna!")
 }
@@ -25,14 +30,14 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func addhandler(w http.ResponseWriter, r *http.Request) {
 
 	decoder := json.NewDecoder(r.Body)
-	var data blockchain.Transaction
+	var data addrequest
 	err := decoder.Decode(&data)
 	if err != nil {
 		panic(err)
 	}
 	defer r.Body.Close()
 
-	MyBlockChain.NewTransaction(data.Sender, data.Recipient, data.Amount)
+	MyBlockChain.NewTransaction(data.Transaction.Sender, data.Transaction.Recipient, data.Transaction.Amount)
 	json.NewEncoder(w).Encode(MyBlockChain.CurrentTransactions)
 
 }
