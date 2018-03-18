@@ -122,10 +122,10 @@ func addhandler(w http.ResponseWriter, r *http.Request) {
 	validationerror := rsa.VerifyPKCS1v15(&readPublicKey, crypto.SHA256, hashOfBytesOfTransaction, signatureByteSlice)
 	if validationerror != nil {
 		fmt.Printf("Error from verification: %s\n", validationerror)
-		return
+		// return
 	}
 
-	// MyBlockChain.NewTransaction(data.Transaction.Sender, data.Transaction.Recipient, data.Transaction.Amount)
+	MyBlockChain.NewTransaction(data.Transaction.Sender, data.Transaction.Recipient, data.Transaction.Amount)
 	json.NewEncoder(w).Encode(MyBlockChain.CurrentTransactions)
 
 }
