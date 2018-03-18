@@ -5,6 +5,7 @@ type Transaction struct {
 	Sender    string
 	Recipient string
 	Amount    float32
+	// Hash      string
 }
 
 //Blocks to be added to the chain

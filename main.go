@@ -1,17 +1,21 @@
 package main
 
 import (
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/base64"
+	// "encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"github.com/bomer/blockchain/blockchain"
 	"math/big"
 	"net/http"
+	"strconv"
 )
 
 var (
@@ -26,14 +30,26 @@ type key struct {
 	N   string
 }
 type addrequest struct {
-	// Signature
+	Signature   map[string]uint8
 	Key         key
-	Transaction blockchain.Transaction
+	Transaction blockchain.Transaction //map[string]int //
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hi there. Seems you hit a dummy end point! Bumblebay tuna!")
 }
+
+// type JSONableSlice []uint8
+
+// func (u JSONableSlice) MarshalJSON() ([]byte, error) {
+// 	var result string
+// 	if u == nil {
+// 		result = "null"
+// 	} else {
+// 		result = strings.Join(strings.Fields(fmt.Sprintf("%d", u)), ",")
+// 	}
+// 	return []byte(result), nil
+// }
 
 //Add a transaction, need the following post params
 // Receives json obj of type Block
@@ -60,9 +76,52 @@ func addhandler(w http.ResponseWriter, r *http.Request) {
 
 	readPublicKey := rsa.PublicKey{N: z, E: e}
 
-	fmt.Printf("eeee %v eee", readPublicKey)
+	fmt.Printf("Publick key ========== \n %v \n", readPublicKey)
+	// print(crypto.SHA256)
 
-	MyBlockChain.NewTransaction(data.Transaction.Sender, data.Transaction.Recipient, data.Transaction.Amount)
+	// bytemsg := []byte(data.Transaction)
+	// print(data.Transaction)
+	b, err := json.Marshal(data.Transaction)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	// fmt.Println(string(b))
+	// bytesOfTransaction := []byte(b)
+	// fmt.Printf("transaction %v \n", bytesOfTransaction)
+	shaOfBytesOfTransaction := sha256.Sum256(b)
+	// str := hex.EncodeToString(shaOfBytesOfTransaction[:])
+	// hashOfBytesOfTransaction := []byte(str)
+	// test := string(hashOfBytesOfTransaction)
+	hashOfBytesOfTransaction := shaOfBytesOfTransaction[:]
+
+	// fmt.Printf("hased trans string == \n%v\n", str)
+	fmt.Printf("hased trans == bytes \n%v\n", hashOfBytesOfTransaction)
+	// var v []byte
+	// for _, value := range data.Signature {
+	// 	v = append(v, byte(value))
+	// }
+	v := data.Signature
+	// fmt.Printf("Signature %v", v)
+	var signatureByteSlice []byte
+
+	for i := 0; i < len(v); i++ {
+		s := strconv.Itoa(i)
+		out := v[s]
+		// fmt.Printf("%d - %d \n", i, out)
+		signatureByteSlice = append(signatureByteSlice, byte(out))
+
+	}
+	fmt.Printf("sig byte slice trans == bytes \n %v \n", signatureByteSlice)
+
+	// sig := new([]byte)
+	validationerror := rsa.VerifyPKCS1v15(&readPublicKey, crypto.SHA256, shaOfBytesOfTransaction[:], signatureByteSlice)
+	if validationerror != nil {
+		fmt.Printf("Error from verification: %s\n", validationerror)
+		return
+	}
+
+	// MyBlockChain.NewTransaction(data.Transaction.Sender, data.Transaction.Recipient, data.Transaction.Amount)
 	json.NewEncoder(w).Encode(MyBlockChain.CurrentTransactions)
 
 }

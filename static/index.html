@@ -43,13 +43,21 @@
 			methods:{
 				add: function () {
 					// sign(key)
-					var msg = {Sender: this.from, Recipient:this.to, Amount:Number(this.amount)};					
+					var msg = {Sender: this.from, Recipient:this.to, Amount:Number(this.amount)};
 					var sign = this.sign(this.privatekey,msg)
 					console.log(sign);
 					
 				},
 				sign:function(key,msg){
-					var msgenc = this.encodemsg(msg);
+
+					var hash = sha256.array(JSON.stringify(msg));					
+
+					// var msghash=sha256(JSON.stringify(msg)).array();
+					console.log("hash");
+					console.log(hash);
+					// var msgenc = this.encodemsg(hash);
+					var msgenc = new Uint8Array(hash);
+					console.log("msgenc");
 					console.log(msgenc);
 					var that=this;
 
@@ -58,12 +66,25 @@
 						console.log("new Uint8Array(signature)");
 						var sig=(new Uint8Array(signature));
 						console.log("signature");
-						console.log(signature);
+						console.log(sig);
 
 						console.log("that.publickey");
 						console.log(that.publickey);
 
-						var send = JSON.stringify({Transaction:msg,Signature: sig,Key:JSON.parse(localStorage.getItem('public'))});
+						// var stringsig = new TextDecoder('utf-8').decode(sig);
+
+						
+						
+						var stringsig="";
+
+						for (var i = 0; i < sig.length; i++) {
+							stringsig += String.fromCharCode(sig[i]);
+						}
+						console.log("stringsig");
+						console.log(stringsig);
+
+
+						var send = JSON.stringify({Transaction:msg,Signature:sig,Key:JSON.parse(localStorage.getItem('public'))});
 
 						console.log(send);
 						console.log(that.verify(signature,msgenc));
@@ -93,9 +114,12 @@
 				},
 				encodemsg:function(msg){
 					var enc = new TextEncoder("utf-8");
+					console.log("before");
+					console.log(msg);
 					var encodedmsg = enc.encode(msg);
 					console.log("encodedmsg");
-					console.log(encodedmsg);
+					console.log(encodedmsg);					
+
 					return encodedmsg;
 				},			
 				getTransactions:function(){
