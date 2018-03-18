@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/base64"
-	// "encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
@@ -63,10 +62,13 @@ func addhandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
+	//Build a public key from the sent information..
+
 	//Extract the E + N (exponent + Number) of the encoded public Key.
 	z := new(big.Int)
-	byteslice := []byte(data.Key.N)
+	byteslice, _ := base64.RawURLEncoding.DecodeString(data.Key.N)
 	z.SetBytes(byteslice)
+	fmt.Printf("Bytes of N ---\n %v --- ", byteslice)
 
 	e_data, _ := base64.RawURLEncoding.DecodeString(data.Key.E)
 
@@ -103,8 +105,10 @@ func addhandler(w http.ResponseWriter, r *http.Request) {
 	// }
 	v := data.Signature
 	// fmt.Printf("Signature %v", v)
-	var signatureByteSlice []byte
 
+	//
+	//Build the signature into an ordered array of btes, then byte slice becaus map has no order.
+	var signatureByteSlice []byte
 	for i := 0; i < len(v); i++ {
 		s := strconv.Itoa(i)
 		out := v[s]
@@ -115,7 +119,7 @@ func addhandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("sig byte slice trans == bytes \n %v \n", signatureByteSlice)
 
 	// sig := new([]byte)
-	validationerror := rsa.VerifyPKCS1v15(&readPublicKey, crypto.SHA256, shaOfBytesOfTransaction[:], signatureByteSlice)
+	validationerror := rsa.VerifyPKCS1v15(&readPublicKey, crypto.SHA256, hashOfBytesOfTransaction, signatureByteSlice)
 	if validationerror != nil {
 		fmt.Printf("Error from verification: %s\n", validationerror)
 		return
